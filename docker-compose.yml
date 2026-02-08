@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  inventory-backend:
+    build: .
+    container_name: opsmind-inventory-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      # Connect to the MongoDB container running in the Infra stack
+      - MONGO_URI=mongodb://opsmind-mongodb:27017/inventory_db
+      
+      # UPDATED: Connect using the 'opsmind' user you created in Infrastructure
+      - RABBITMQ_URI=amqp://opsmind:opsmind@opsmind-rabbitmq:5672
+      
+    networks:
+      - opsmind-net
+
+# Connect to the external network created by Infrastructure
+networks:
+  opsmind-net:
+    external: true
+    name: opsmind-net
