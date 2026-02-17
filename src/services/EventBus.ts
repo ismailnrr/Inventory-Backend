@@ -7,27 +7,29 @@ export class EventBusService {
 
   async connect() {
     try {
-      console.log(`🔌 Attempting to connect to RabbitMQ...`);
-
-      // ✅ CORRECT CREDENTIALS FOUND IN DOCKER-COMPOSE:
-      // user: opsmind
-      // pass: opsmind
-      const rabbitURI = 'amqp://opsmind:opsmind@127.0.0.1:5672';
+      // 1. Get the URI from the environment (.env file), or fall back to Docker default
+      const rabbitURI = process.env.RABBITMQ_URI || 'amqp://opsmind:opsmind@opsmind-rabbitmq:5672';
       
+      console.log(`🔌 Attempting to connect to RabbitMQ at: ${rabbitURI}`);
+
       this.connection = await amqp.connect(rabbitURI);
       this.channel = await this.connection.createChannel();
       await this.channel.assertExchange(this.EXCHANGE_NAME, 'topic', { durable: false });
 
       console.log('✅ Connected to RabbitMQ Event Bus');
     } catch (error) {
-      console.error('❌ RabbitMQ Connection Failed. Please check your Docker container.');
+      console.error('❌ RabbitMQ Connection Failed.');
       console.error('Error Details:', error);
-      process.exit(1);
+      // In production, you might want to retry rather than exit
+      process.exit(1); 
     }
   }
 
   async publish(topic: string, data: any) {
-    if (!this.channel) return;
+    if (!this.channel) {
+        console.warn(`[EVENT BUS] ⚠️ Cannot publish: No channel established for ${topic}`);
+        return;
+    }
     try {
       const message = JSON.stringify(data);
       this.channel.publish(this.EXCHANGE_NAME, topic, Buffer.from(message));
